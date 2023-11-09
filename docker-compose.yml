@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  php:
+    build: 
+      context: ./docker/php
+      dockerfile: ./Dockerfile
+      args:
+        DEPOT: ${DEPOT}
+        RESEAU: ${RESEAU}
+    volumes:
+      - ./:/var/www/html
+      - ./xdebug:/tmp/xdebug
+      - ./logs:/var/log/apache2/
+      #- ./docker/apache/conf.d/symfony.conf:/etc/apache2/sites-enabled/000-default.conf
+      - ./docker/php/conf.d/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+      #- ./docker/php/conf.d/docker-timezone.ini:/usr/local/etc/php/conf.d/docker.ini
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # - XDEBUG_MODE=develop,debug
+      - XDEBUG_MODE=develop,debug,profile
+    ports:
+      - 8080:80
+    depends_on:
+      - db
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - 8081:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: sada@sada.anfsi
+      PGADMIN_DEFAULT_PASSWORD: sada
+      PGADMIN_LISTEN_ADDRESS: 0.0.0.0
+    depends_on:
+      - db
+    volumes:
+      - ./pgadmin-data:/var/lib/pgadmin
+
+  db:
+    image: postgres:12
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: geodispo
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
