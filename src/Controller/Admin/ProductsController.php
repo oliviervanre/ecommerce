@@ -66,11 +66,51 @@ class ProductsController extends AbstractController
     }
     #[Route('/edition/{id}', name: 'edit')]
 
-    public function edit(Products $product) : Response 
+    public function edit(Products $product, Request $request, EntityManagerInterface $em, SluggerInterface $slugger) : Response 
     {
         // On vérifie si l'utilisateur peut éditer avec le Voter
         $this->denyAccessUnlessGranted('PRODUCT_EDIT', $product);
-        return $this->render('admin/products/index.html.twig');    
+
+        // On divise le prix par 100
+        $prix = $product->getPrice() / 100;
+        $product->setPrice($prix);
+        
+        //On créé le formulaire
+        $productForm = $this->createForm(ProductsFormType::class, $product);
+
+        // On traite la requête du formulaire
+        $productForm->handleRequest($request);
+        // On vérifie si le formulaire est soumis ET valide
+        if($productForm->isSubmitted() && $productForm->isValid()){
+            // On génère le Slug
+            $slug = $slugger->slug($product->getName());
+            $product->setSlug($slug);
+
+            // On arrondit le prix 
+            $prix = $product->getPrice() * 100;
+            $product->setPrice($prix);
+
+            // On stocke le produit
+            $em->persist($product);
+            $em->flush();
+
+            $this->addFlash('success', 'Produit modifié avec succès');
+
+            // On redirige
+            //return $this->redirectToRoute('admin_products_index');
+            return $this->redirectToRoute('admin_products_index');
+        }
+
+
+        return $this->render('admin/products/edit.html.twig',[
+            'productForm' => $productForm->createView()
+        ]);    
+
+        //   return $this->render('admin/products/index.html.twig', compact('productForm'));
+
+        // compact équivaut à ['productForm' => $productForm]  
+        // mais ce return ne fonctionnement pas avec render et renderForm est deprecated
+  
     }
     #[Route('/suppression/{id}', name: 'delete')]
 
